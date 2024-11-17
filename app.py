@@ -62,38 +62,45 @@ class ToyotaAnalyzer:
 
     def create_yearly_trends(self):
         """Create yearly trend plots"""
-        # Create a figure with subplots for MPG, Fuel Cost, and GHG
+        # Create random noise for y-values
+        noise = np.random.uniform(-0.1, 0.1, size=len(self.data))  # Random noise between -0.1 and 0.1
+
+        # Create a figure for each of the three categories
         fig = make_subplots(rows=3, cols=1,
-                            subplot_titles=('Fuel Economy',
-                                            'Annual Fuel Cost',
-                                            'GHG Rating'))
+                            subplot_titles=('Fuel Economy (MPG) by Year',
+                                            'Annual Fuel Cost by Year',
+                                            'GHG Rating by Year'))
 
-        # Scatter plot of individual model data for MPG
-        fig.add_trace(go.Scatter(x=self.data['year'], 
-                                y=self.data[self.mpg],
-                                mode='markers',
-                                name='Individual Models - MPG',
-                                marker=dict(size=5, opacity=0.5)),
-                    row=1, col=1)
+        # Scatter plot of MPG
+        fig.add_trace(go.Scatter(
+            x=self.data[self.mpg],
+            y=1 + noise,  # Adding random noise to y-value
+            mode='markers',
+            marker=dict(size=10, color=self.data['year'], colorscale='Viridis', colorbar=dict(title='Year', len=0.5)),
+            showlegend=False
+        ), row=1, col=1)
 
-        # Fuel Cost Individual Models
-        fig.add_trace(go.Scatter(x=self.data['year'], 
-                                y=self.data[self.fc],
-                                mode='markers',
-                                name='Individual Models - Fuel Cost',
-                                marker=dict(size=5, opacity=0.5)),
-                    row=2, col=1)
+        # Scatter plot of Fuel Cost
+        fig.add_trace(go.Scatter(
+            x=self.data[self.fc],
+            y=1 + noise,  # Adding random noise to y-value
+            mode='markers',
+            marker=dict(size=10, color=self.data['year'], colorscale='Viridis', colorbar=dict(title='Year', len=0.5)),
+            showlegend=False
+        ), row=2, col=1)
 
-        # GHG Rating Individual Models
-        fig.add_trace(go.Scatter(x=self.data['year'], 
-                                y=self.data[self.ghg],
-                                mode='markers',
-                                name='Individual Models - GHG Rating',
-                                marker=dict(size=5, opacity=0.5)),
-                    row=3, col=1)
+        # Scatter plot of GHG Rating
+        fig.add_trace(go.Scatter(
+            x=self.data[self.ghg],
+            y=1 + noise,  # Adding random noise to y-value
+            mode='markers',
+            marker=dict(size=10, color=self.data['year'], colorscale='Viridis', colorbar=dict(title='Year', len=0.5)),
+            showlegend=False
+        ), row=3, col=1)
 
         # Update layout for better visibility
         fig.update_layout(height=800, showlegend=True)
+        fig.update_yaxes(title_text="", showticklabels=False)  # Hide y-axis ticks
 
         return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
