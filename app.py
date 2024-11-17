@@ -106,7 +106,12 @@ class ToyotaAnalyzer:
 
         fig = px.scatter(model_stats, x=mpg, y=fc,
                         size=ghg, hover_data=[carline],
-                        title='Model Comparison: MPG vs Fuel Cost (size = GHG Rating)')
+                        title='Model Comparison: Fuel Economy vs Fuel Cost (size = GHG Rating)')
+        
+        fig.update_layout(title='',
+                      xaxis_title='Fuel Economy',
+                      yaxis_title='Annual Fuel Cost',
+                      boxmode='group')  # Grouping the boxes together for comparison
         
         return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
@@ -119,18 +124,32 @@ class ToyotaAnalyzer:
             'total_models': len(self.data[carline].unique())
         }
 
-    def predict_future(self, year, mpg, fuc):
+    def predict_future(self, future_year):
         """Train model and make prediction"""
-        features = ['year', mpg, fc]
-        target = ghg
+        features = ['year']
+        target = self.mpg
         
+        # Prepare the input for prediction
+        if future_year <= 0:
+            raise ValueError("Invalid year for prediction.")
+
+        # Create feature DataFrame for the model
         X = self.data[features]
         y = self.data[target]
+
+        X = X.dropna()  # Drop any rows with NaN values to avoid fitting errors
+        y = y[X.index]  # Ensure y corresponds to the X data we have after dropping NaN
         
+        if len(X) == 0 or len(y) == 0:
+            raise ValueError("Not enough data to train model.")
+
         model = LinearRegression()
         model.fit(X, y)
-        
-        prediction = model.predict([[year, mpg, fc]])
+
+        # Prepare new data point for prediction
+        new_data = np.array([[future_year]])
+        prediction = model.predict(new_data)
+
         return round(float(prediction[0]), 2)
 
 # Initialize analyzer
@@ -181,12 +200,16 @@ def get_plots():
 @app.route('/predict', methods=['POST'])
 def predict():
     data = request.get_json()
-    prediction = analyzer.predict_future(
-        int(data['year']),
-        float(data[mpg]),
-        float(data[fc])
-    )
-    return jsonify({'prediction': prediction})
+    
+    # Capture the future year from the user's request
+    future_year = int(data['future_year'])
+
+    # Call the prediction function
+    try:
+        prediction = analyzer.predict_future(future_year)
+        return jsonify({'predicted_mpg': prediction})
+    except ValueError as e:
+        return jsonify({'error': str(e)}), 400
 
 if __name__ == '__main__':
     app.run(debug=True)

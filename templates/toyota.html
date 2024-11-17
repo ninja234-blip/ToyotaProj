@@ -146,7 +146,16 @@
             margin: 20px 0;
         }
 
-        /* Ripple effect on background */
+        .ripple-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Prevent scrolling issues */
+            z-index: 0; /* Behind everything */
+        }
+
         @keyframes ripple {
             0% {
                 transform: scale(0);
@@ -157,7 +166,7 @@
                 opacity: 0;
             }
         }
-
+        
         .ripple {
             position: absolute;
             border-radius: 50%;
@@ -166,27 +175,9 @@
             animation: ripple 4s infinite ease-in-out; /* Slowed down ripple animation */
             will-change: transform, opacity; /* Optimization for performance */
         }
-
-        /* Make each ripple spawn at a random position */
-        .ripple:nth-child(odd) {
-            animation-delay: -2s; /* Make visual variance */
-        }
-
-        /* Ripple overlay */
-        .ripple-container {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden; /* Prevent scrolling issues */
-            z-index: 0; /* Behind everything */
-        }
     </style>
 </head>
 <body>
-    <div class="ripple-container" id="rippleContainer"></div> <!-- Container for ripples -->
-    
     <div class="container">
         <div class="header">
             <h1>Toyota Fuel Economy Analysis Dashboard</h1>
@@ -235,43 +226,13 @@
                     <label for="predYear">Year</label>
                     <input type="number" id="predYear" min="2026" max="2030" value="2026">
                 </div>
-                <div class="form-group">
-                    <label for="predMpg">Expected MPG</label>
-                    <input type="number" id="predMpg" min="0" max="100" value="30">
-                </div>
-                <div class="form-group">
-                    <label for="predCost">Expected Annual Fuel Cost</label>
-                    <input type="number" id="predCost" min="0" max="10000" value="2000">
-                </div>
             </div>
-            <button onclick="makePrediction()">Predict GHG Rating</button>
+            <button onclick="makePrediction()">Predict Fuel Economy</button>
             <div id="predictionResult"></div>
         </div>
     </div>
 
     <script>
-        // Function to create multiple ripple effects across the screen
-        function addRipples() {
-            const container = document.getElementById('rippleContainer');
-            for (let i = 0; i < 10; i++) { // Increased number of ripples
-                const ripple = document.createElement('div');
-                ripple.classList.add('ripple');
-                // Random positions on the screen
-                const x = Math.random() * window.innerWidth;
-                const y = Math.random() * window.innerHeight;
-
-                ripple.style.width = `${Math.random() * 200 + 300}px`; // Random size between 300px and 500px
-                ripple.style.height = ripple.style.width; // Maintain aspect ratio
-                ripple.style.top = `${y}px`;
-                ripple.style.left = `${x}px`;
-                
-                container.appendChild(ripple);
-            }
-        }
-
-        // Call the function to add ripples to the UI
-        addRipples();
-
         function uploadFiles() {
             const fileInput = document.getElementById('fileInput');
             const files = fileInput.files;
@@ -323,8 +284,6 @@
 
         function makePrediction() {
             const year = document.getElementById('predYear').value;
-            const mpg = document.getElementById('predMpg').value;
-            const fuelCost = document.getElementById('predCost').value;
 
             fetch('/predict', {
                 method: 'POST',
@@ -332,15 +291,14 @@
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    year: year,
-                    mpg: mpg,
-                    fuel_cost: fuelCost
+                    future_year: year // Use 'future_year' instead of 'year'
                 })
             })
             .then(response => response.json())
             .then(data => {
                 document.getElementById('predictionResult').innerHTML = 
-                    `<h3>Predicted GHG Rating: ${data.prediction}</h3>`;
+                    data.error ? `<h3>Error: ${data.error}</h3>` : 
+                    `<h3>Predicted Fuel Economy for ${year}: ${data.predicted_mpg} MPG</h3>`;
             })
             .catch(error => alert('Error making prediction'));
         }
