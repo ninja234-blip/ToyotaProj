@@ -189,12 +189,15 @@
                     Plotly.newPlot('modelComparison', JSON.parse(data.model_comparison));
 
                     // Update statistics
-                    document.getElementById('avgMpg').textContent = data.summary_stats.avg_mpg;
-                    document.getElementById('avgFuelCost').textContent = `$${data.summary_stats.avg_fuel_cost}`;
-                    document.getElementById('avgGhg').textContent = data.summary_stats.avg_ghg;
-                    document.getElementById('totalModels').textContent = data.summary_stats.total_models;
+                    document.getElementById('Comb FE (Guide) - Conventional Fuel').textContent = data.summary_stats.avg_mpg;
+                    document.getElementById('Annual Fuel1 Cost - Conventional Fuel').textContent = `$${data.summary_stats.avg_fuel_cost}`;
+                    document.getElementById('GHG Rating (1-10 rating on Label)').textContent = data.summary_stats.avg_ghg;
+                    document.getElementById('Carline').textContent = data.summary_stats.total_models;
                 })
-                .catch(error => alert('Error updating dashboard'));
+                .catch(error => {
+                    console.error('Error updating dashboard:', error);
+                    alert('Error updating dashboard');
+                });
         }
 
         function makePrediction() {

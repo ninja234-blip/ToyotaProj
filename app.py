@@ -15,6 +15,11 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
 
+mpg = "comb_fe_(guide)_-_conventional_fuel"
+fc = "annual_fuel1_cost_-_conventional_fuel"
+ghg = "ghg_rating_(1-10_rating_on_label)"
+carline = "carline"
+
 # Ensure upload folder exists
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
@@ -39,21 +44,27 @@ class ToyotaAnalyzer:
 
     def preprocess_data(self):
         """Clean and prepare data"""
-        if 'mpg' in self.data.columns:
-            self.data['mpg'] = pd.to_numeric(self.data['mpg'], errors='coerce')
+        if mpg in self.data.columns:
+            self.data[mpg] = pd.to_numeric(self.data[mpg], errors='coerce')
         
-        if 'annual_fuel_cost' in self.data.columns:
-            self.data['annual_fuel_cost'] = self.data['annual_fuel_cost'].replace('[\$,]', '', regex=True).astype(float)
+        if fc in self.data.columns:
+            self.data[fc] = self.data[fc].replace('[\$,]', '', regex=True).astype(float)
         
-        if 'ghg_rating' in self.data.columns:
-            self.data['ghg_rating'] = pd.to_numeric(self.data['ghg_rating'], errors='coerce')
+        if ghg in self.data.columns:
+            self.data[ghg] = pd.to_numeric(self.data[ghg], errors='coerce')
+
+        self.mpg = 'comb_fe_(guide)_-_conventional_fuel'  # Updated to match the preprocessed name
+        self.fc = 'annual_fuel1_cost_-_conventional_fuel'
+        self.ghg = 'ghg_rating_(1-10_rating_on_label)'
+
+        print("Columns in DataFrame after preprocessing:", self.data.columns)
 
     def create_yearly_trends(self):
         """Create yearly trend plots"""
         yearly_stats = self.data.groupby('year').agg({
-            'mpg': 'mean',
-            'annual_fuel_cost': 'mean',
-            'ghg_rating': 'mean'
+            self.mpg: 'mean',
+            self.fc: 'mean',
+            self.ghg: 'mean'
         }).reset_index()
 
         fig = make_subplots(rows=3, cols=1,
@@ -61,15 +72,15 @@ class ToyotaAnalyzer:
                                          'Average Annual Fuel Cost by Year',
                                          'Average GHG Rating by Year'))
 
-        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats['mpg'],
+        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats[mpg],
                                mode='lines+markers', name='MPG'),
                      row=1, col=1)
         
-        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats['annual_fuel_cost'],
+        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats[fc],
                                mode='lines+markers', name='Fuel Cost'),
                      row=2, col=1)
         
-        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats['ghg_rating'],
+        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats[ghg],
                                mode='lines+markers', name='GHG Rating'),
                      row=3, col=1)
 
@@ -78,14 +89,14 @@ class ToyotaAnalyzer:
 
     def create_model_comparison(self):
         """Create model comparison scatter plot"""
-        model_stats = self.data.groupby('model').agg({
-            'mpg': 'mean',
-            'annual_fuel_cost': 'mean',
-            'ghg_rating': 'mean'
+        model_stats = self.data.groupby(carline).agg({
+            self.mpg: 'mean',
+            self.fc: 'mean',
+            self.ghg: 'mean',
         }).reset_index()
 
-        fig = px.scatter(model_stats, x='mpg', y='annual_fuel_cost',
-                        size='ghg_rating', hover_data=['model'],
+        fig = px.scatter(model_stats, x=mpg, y=fc,
+                        size=ghg, hover_data=[carline],
                         title='Model Comparison: MPG vs Fuel Cost (size = GHG Rating)')
         
         return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
@@ -93,16 +104,16 @@ class ToyotaAnalyzer:
     def get_summary_stats(self):
         """Get summary statistics"""
         return {
-            'avg_mpg': round(self.data['mpg'].mean(), 2),
-            'avg_fuel_cost': round(self.data['annual_fuel_cost'].mean(), 2),
-            'avg_ghg': round(self.data['ghg_rating'].mean(), 2),
-            'total_models': len(self.data['model'].unique())
+            'avg_mpg': round(self.data[mpg].mean(), 2),
+            'avg_fuel_cost': round(self.data[fc].mean(), 2),
+            'avg_ghg': round(self.data[ghg].mean(), 2),
+            'total_models': len(self.data[carline].unique())
         }
 
-    def predict_future(self, year, mpg, fuel_cost):
+    def predict_future(self, year, mpg, fuc):
         """Train model and make prediction"""
-        features = ['year', 'mpg', 'annual_fuel_cost']
-        target = 'ghg_rating'
+        features = ['year', mpg, fc]
+        target = ghg
         
         X = self.data[features]
         y = self.data[target]
@@ -110,7 +121,7 @@ class ToyotaAnalyzer:
         model = LinearRegression()
         model.fit(X, y)
         
-        prediction = model.predict([[year, mpg, fuel_cost]])
+        prediction = model.predict([[year, mpg, fc]])
         return round(float(prediction[0]), 2)
 
 # Initialize analyzer
@@ -163,8 +174,8 @@ def predict():
     data = request.get_json()
     prediction = analyzer.predict_future(
         int(data['year']),
-        float(data['mpg']),
-        float(data['fuel_cost'])
+        float(data[mpg]),
+        float(data[fc])
     )
     return jsonify({'prediction': prediction})
 
