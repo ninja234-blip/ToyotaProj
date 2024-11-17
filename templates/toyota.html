@@ -221,13 +221,18 @@
 
         <div class="prediction-section">
             <h2>Future Predictions</h2>
+            <div class="stat-card">
+                <h3>Average of Fuel Economy Medians for inputted years</h3>
+                <p id="avgOfMedians">-</p>
+            </div>
+            <br></br>
             <div class="prediction-form">
                 <div class="form-group">
                     <label for="predYear">Year</label>
-                    <input type="number" id="predYear" min="2026" max="2030" value="2026">
+                    <input type="number" id="predYear" min="2026" max="2050" value="2026">
                 </div>
             </div>
-            <button onclick="makePrediction()">Predict Fuel Economy</button>
+            <button onclick="makePrediction()">Predict Average Fuel Economy</button>
             <div id="predictionResult"></div>
         </div>
     </div>
@@ -278,6 +283,7 @@
                     document.getElementById('avgFuelCost').textContent = `$${data.summary_stats.avg_fuel_cost}`;
                     document.getElementById('avgGhg').textContent = data.summary_stats.avg_ghg;
                     document.getElementById('totalModels').textContent = data.summary_stats.total_models;
+                    document.getElementById('avgOfMedians').textContent = data.avg_of_medians; 
                 })
                 .catch(error => alert('Error updating dashboard'));
         }
@@ -298,7 +304,7 @@
             .then(data => {
                 document.getElementById('predictionResult').innerHTML = 
                     data.error ? `<h3>Error: ${data.error}</h3>` : 
-                    `<h3>Predicted Fuel Economy for ${year}: ${data.predicted_mpg} MPG</h3>`;
+                    `<h3>Predicted Median Fuel Economy for ${year}: ${data.predicted_mpg} MPG</h3>`;
             })
             .catch(error => alert('Error making prediction'));
         }

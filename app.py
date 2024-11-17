@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
 from werkzeug.utils import secure_filename
+import math
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = 'uploads'
@@ -123,34 +124,33 @@ class ToyotaAnalyzer:
             'avg_ghg': round(self.data[ghg].mean(), 2),
             'total_models': len(self.data[carline].unique())
         }
+    
+    #to display info for mean of median of years for files
+    def get_average_of_medians(self):
+        """Calculate the average of the medians of MPG for each year."""
+        median_data = self.data.groupby('year')[self.mpg].median()
+        return round(median_data.mean(), 2) if not median_data.empty else None
 
     def predict_future(self, future_year):
-        """Train model and make prediction"""
-        features = ['year']
-        target = self.mpg
+        """Predict future average fuel economy based on median of past years' values."""
+        # Pre-processing to ensure years are ordered
+        median_data = self.data.groupby('year')[self.mpg].median().reset_index()
         
-        # Prepare the input for prediction
-        if future_year <= 0:
-            raise ValueError("Invalid year for prediction.")
+        if future_year not in median_data['year'].values:
+            median_data = median_data.set_index('year')
+            
+            # Interpolate to find the median value for the future_year
+            median_data = median_data[['comb_fe_(guide)_-_conventional_fuel']]
+            future_prediction = median_data.reindex(range(median_data.index.min(), future_year + 1)).interpolate(method='linear')
+            
+            if future_year in future_prediction.index:
+                predicted_value = future_prediction.loc[future_year].values[0]
+                return round(float(predicted_value), 2)
+            else:
+                raise ValueError(f"No data available to predict for the year {future_year}.")
 
-        # Create feature DataFrame for the model
-        X = self.data[features]
-        y = self.data[target]
-
-        X = X.dropna()  # Drop any rows with NaN values to avoid fitting errors
-        y = y[X.index]  # Ensure y corresponds to the X data we have after dropping NaN
-        
-        if len(X) == 0 or len(y) == 0:
-            raise ValueError("Not enough data to train model.")
-
-        model = LinearRegression()
-        model.fit(X, y)
-
-        # Prepare new data point for prediction
-        new_data = np.array([[future_year]])
-        prediction = model.predict(new_data)
-
-        return round(float(prediction[0]), 2)
+        # If there is data for that year, use the median directly
+        return round(predicted_value, 2)
 
 # Initialize analyzer
 analyzer = ToyotaAnalyzer()
@@ -190,11 +190,14 @@ def get_plots():
     yearly_trends = analyzer.create_yearly_trends()
     model_comparison = analyzer.create_model_comparison()
     summary_stats = analyzer.get_summary_stats()
+
+    avg_of_medians = analyzer.get_average_of_medians()
     
     return jsonify({
         'yearly_trends': yearly_trends,
         'model_comparison': model_comparison,
-        'summary_stats': summary_stats
+        'summary_stats': summary_stats,
+        'avg_of_medians': avg_of_medians
     })
 
 @app.route('/predict', methods=['POST'])
@@ -204,9 +207,18 @@ def predict():
     # Capture the future year from the user's request
     future_year = int(data['future_year'])
 
+    years_difference = future_year - 2025
+        
+    initial_increment = 0.4
+    total_increment = 0
+
+    for i in range(1, years_difference+1):
+        total_increment += initial_increment * math.sqrt(1 - (i-1)/(years_difference+1))
+
+
     # Call the prediction function
     try:
-        prediction = analyzer.predict_future(future_year)
+        prediction = round(analyzer.predict_future(future_year) + total_increment, 2)
         return jsonify({'predicted_mpg': prediction})
     except ValueError as e:
         return jsonify({'error': str(e)}), 400
