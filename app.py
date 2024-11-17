@@ -61,30 +61,66 @@ class ToyotaAnalyzer:
 
     def create_yearly_trends(self):
         """Create yearly trend plots"""
-        yearly_stats = self.data.groupby('year').agg({
-            self.mpg: 'mean',
-            self.fc: 'mean',
-            self.ghg: 'mean'
-        }).reset_index()
-
+        # Create a figure with subplots for MPG, Fuel Cost, and GHG
         fig = make_subplots(rows=3, cols=1,
-                           subplot_titles=('Average MPG by Year',
-                                         'Average Annual Fuel Cost by Year',
-                                         'Average GHG Rating by Year'))
+                            subplot_titles=('Yearly Trends: MPG',
+                                            'Yearly Trends: Fuel Cost',
+                                            'Yearly Trends: GHG Rating'))
 
-        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats[mpg],
-                               mode='lines+markers', name='MPG'),
-                     row=1, col=1)
-        
-        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats[fc],
-                               mode='lines+markers', name='Fuel Cost'),
-                     row=2, col=1)
-        
-        fig.add_trace(go.Scatter(x=yearly_stats['year'], y=yearly_stats[ghg],
-                               mode='lines+markers', name='GHG Rating'),
-                     row=3, col=1)
+        # Scatter plot of individual model data for MPG
+        fig.add_trace(go.Scatter(x=self.data['year'], 
+                                y=self.data[self.mpg],
+                                mode='markers',
+                                name='Individual Models - MPG',
+                                marker=dict(size=5, opacity=0.5)),
+                    row=1, col=1)
 
-        fig.update_layout(height=800, showlegend=False)
+        # Including average MPG line
+        avg_mpg = self.data.groupby('year')[self.mpg].mean().reset_index()
+        fig.add_trace(go.Scatter(x=avg_mpg['year'], 
+                                y=avg_mpg[self.mpg],
+                                mode='lines+markers',
+                                name='Average MPG',
+                                line=dict(color='red', width=4)),  # Make the line thicker for clarity
+                    row=1, col=1)
+
+        # Fuel Cost Individual Models
+        fig.add_trace(go.Scatter(x=self.data['year'], 
+                                y=self.data[self.fc],
+                                mode='markers',
+                                name='Individual Models - Fuel Cost',
+                                marker=dict(size=5, opacity=0.5)),
+                    row=2, col=1)
+
+        # Including average Fuel Cost line
+        avg_fc = self.data.groupby('year')[self.fc].mean().reset_index()
+        fig.add_trace(go.Scatter(x=avg_fc['year'], 
+                                y=avg_fc[self.fc],
+                                mode='lines+markers',
+                                name='Average Fuel Cost',
+                                line=dict(color='red', width=4)),  # Make the line thicker for clarity
+                    row=2, col=1)
+
+        # GHG Rating Individual Models
+        fig.add_trace(go.Scatter(x=self.data['year'], 
+                                y=self.data[self.ghg],
+                                mode='markers',
+                                name='Individual Models - GHG Rating',
+                                marker=dict(size=5, opacity=0.5)),
+                    row=3, col=1)
+
+        # Including average GHG Rating line
+        avg_ghg = self.data.groupby('year')[self.ghg].mean().reset_index()
+        fig.add_trace(go.Scatter(x=avg_ghg['year'], 
+                                y=avg_ghg[self.ghg],
+                                mode='lines+markers',
+                                name='Average GHG Rating',
+                                line=dict(color='red', width=4)),  # Make the line thicker for clarity
+                    row=3, col=1)
+
+        # Update layout for better visibility
+        fig.update_layout(height=800, showlegend=True)
+
         return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
 
     def create_model_comparison(self):
