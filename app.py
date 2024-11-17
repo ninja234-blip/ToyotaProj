@@ -99,19 +99,26 @@ class ToyotaAnalyzer:
 
     def create_model_comparison(self):
         """Create model comparison scatter plot"""
-        model_stats = self.data.groupby(carline).agg({
+        model_stats = self.data.groupby([carline, 'year']).agg({
             self.mpg: 'mean',
             self.fc: 'mean',
             self.ghg: 'mean',
         }).reset_index()
 
-        fig = px.scatter(model_stats, x=mpg, y=fc,
-                        size=ghg, hover_data=[carline],
-                        title='Model Comparison: Fuel Economy vs Fuel Cost (size = GHG Rating)')
+        fig = px.scatter(
+        model_stats, 
+        x=self.mpg, 
+        y=self.fc,
+        size=self.ghg, 
+        color='year',  # Color by year
+        hover_data=[carline],
+        title='Model Comparison: Fuel Economy vs Fuel Cost (size = GHG Rating)'
+    )
         
         fig.update_layout(title='',
                       xaxis_title='Fuel Economy',
                       yaxis_title='Annual Fuel Cost',
+                      legend_title='Year',
                       boxmode='group')  # Grouping the boxes together for comparison
         
         return json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
