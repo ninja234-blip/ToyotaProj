@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Toyota Fuel Economy Analysis</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/plotly.js/2.24.2/plotly.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+        }
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .stat-card {
+            background-color: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        .plot-container {
+            margin-bottom: 30px;
+        }
+        .prediction-section {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 30px;
+        }
+        .prediction-form {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+        }
+        button {
+            background-color: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0056b3;
+        }
+        .loading {
+            display: none;
+            text-align: center;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Toyota Fuel Economy Analysis Dashboard</h1>
+        </div>
+
+        <div class="upload-section">
+            <h2>Upload Data Files</h2>
+            <input type="file" id="fileInput" multiple accept=".xlsx">
+            <button onclick="uploadFiles()">Upload and Analyze</button>
+            <div class="loading" id="loading">Processing data...</div>
+        </div>
+
+        <div class="stats-container">
+            <div class="stat-card">
+                <h3>Average MPG</h3>
+                <p id="avgMpg">-</p>
+            </div>
+            <div class="stat-card">
+                <h3>Average Fuel Cost</h3>
+                <p id="avgFuelCost">-</p>
+            </div>
+            <div class="stat-card">
+                <h3>Average GHG Rating</h3>
+                <p id="avgGhg">-</p>
+            </div>
+            <div class="stat-card">
+                <h3>Total Models</h3>
+                <p id="totalModels">-</p>
+            </div>
+        </div>
+
+        <div class="plot-container">
+            <h2>Yearly Trends</h2>
+            <div id="yearlyTrends"></div>
+        </div>
+
+        <div class="plot-container">
+            <h2>Model Comparison</h2>
+            <div id="modelComparison"></div>
+        </div>
+
+        <div class="prediction-section">
+            <h2>Future Predictions</h2>
+            <div class="prediction-form">
+                <div class="form-group">
+                    <label for="predYear">Year</label>
+                    <input type="number" id="predYear" min="2026" max="2030" value="2026">
+                </div>
+                <div class="form-group">
+                    <label for="predMpg">Expected MPG</label>
+                    <input type="number" id="predMpg" min="0" max="100" value="30">
+                </div>
+                <div class="form-group">
+                    <label for="predCost">Expected Annual Fuel Cost</label>
+                    <input type="number" id="predCost" min="0" max="10000" value="2000">
+                </div>
+            </div>
+            <button onclick="makePrediction()">Predict GHG Rating</button>
+            <div id="predictionResult"></div>
+        </div>
+    </div>
+
+    <script>
+        function uploadFiles() {
+            const fileInput = document.getElementById('fileInput');
+            const files = fileInput.files;
+            
+            if (files.length === 0) {
+                alert('Please select files to upload');
+                return;
+            }
+
+            const formData = new FormData();
+            for (let i = 0; i < files.length; i++) {
+                formData.append('files[]', files[i]);
+            }
+
+            document.getElementById('loading').style.display = 'block';
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    alert(data.error);
+                } else {
+                    updateDashboard();
+                }
+            })
+            .catch(error => alert('Error uploading files'))
+            .finally(() => {
+                document.getElementById('loading').style.display = 'none';
+            });
+        }
+
+        function updateDashboard() {
+            fetch('/get_plots')
+                .then(response => response.json())
+                .then(data => {
+                    // Update plots
+                    Plotly.newPlot('yearlyTrends', JSON.parse(data.yearly_trends));
+                    Plotly.newPlot('modelComparison', JSON.parse(data.model_comparison));
+
+                    // Update statistics
+                    document.getElementById('avgMpg').textContent = data.summary_stats.avg_mpg;
+                    document.getElementById('avgFuelCost').textContent = `$${data.summary_stats.avg_fuel_cost}`;
+                    document.getElementById('avgGhg').textContent = data.summary_stats.avg_ghg;
+                    document.getElementById('totalModels').textContent = data.summary_stats.total_models;
+                })
+                .catch(error => alert('Error updating dashboard'));
+        }
+
+        function makePrediction() {
+            const year = document.getElementById('predYear').value;
+            const mpg = document.getElementById('predMpg').value;
+            const fuelCost = document.getElementById('predCost').value;
+
+            fetch('/predict', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    year: year,
+                    mpg: mpg,
+                    fuel_cost: fuelCost
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('predictionResult').innerHTML = 
+                    `<h3>Predicted GHG Rating: ${data.prediction}</h3>`;
+            })
+            .catch(error => alert('Error making prediction'));
+        }
+    </script>
+</body>
+</html>
