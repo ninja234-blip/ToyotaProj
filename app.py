@@ -27,8 +27,8 @@ class ToyotaAnalyzer:
         """Load and combine multiple Excel files"""
         dfs = []
         for file_path in file_paths:
-            df = pd.read_excel(file_path)
-            year = int(os.path.basename(file_path).split('.')[0][-4:])
+            df = pd.read_excel(file_path, engine='openpyxl')
+            year = int(os.path.basename(file_path).split('.')[0][3])
             if 'Year' not in df.columns:
                 df['Year'] = year
             dfs.append(df)
