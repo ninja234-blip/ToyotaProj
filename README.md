@@ -1,2 +1,0 @@
-# ToyotaProj
-UTD HACKATHON
